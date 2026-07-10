@@ -8,3 +8,4 @@ dist/
 # خروجی‌های runtime ابزار
 .java-doc-index/
 generated-docs/
+idx/
