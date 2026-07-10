@@ -1,0 +1,88 @@
+"""پاسخ مستقیم به سوالات آماری ساده از روی متادیتای ایندکس — بدون فراخوانی مدل.
+
+تشخیص با قانون ساده (regex روی کلیدواژه‌ها) انجام می‌شود، نه با حدس مدل؛
+این هم سریع‌تر است و هم ریسک hallucination ندارد.
+"""
+
+from __future__ import annotations
+
+import re
+
+from java_doc_assistant.store import VectorStore
+
+CLASS_LIKE_TYPES = {"class", "interface", "enum", "record", "annotation"}
+
+# الگوهای فارسی و انگلیسی برای هر نوع سوال آماری
+_PATTERNS: list[tuple[str, re.Pattern]] = [
+    ("count_classes", re.compile(
+        r"(تعداد|چند\s*تا|چندتا|چقدر|how\s+many|count).{0,30}(کلاس|class)"
+        r"|(کلاس|class).{0,30}(چندتاست|چند\s*تاست|چندتا|چقدره)", re.IGNORECASE)),
+    ("count_methods", re.compile(
+        r"(تعداد|چند\s*تا|چندتا|چقدر|how\s+many|count).{0,30}(متد|method)"
+        r"|(متد|method).{0,30}(چندتاست|چند\s*تاست|چندتا|چقدره)", re.IGNORECASE)),
+    ("count_files", re.compile(
+        r"(تعداد|چند\s*تا|چندتا|چقدر|how\s+many|count).{0,30}(فایل|file)"
+        r"|(فایل|file).{0,30}(چندتاست|چند\s*تاست|چندتا|چقدره)", re.IGNORECASE)),
+    ("count_packages", re.compile(
+        r"(تعداد|چند\s*تا|چندتا|چقدر|how\s+many|count).{0,30}(پکیج|package)"
+        r"|(پکیج|package).{0,30}(چندتاست|چند\s*تاست|چندتا|چقدره)", re.IGNORECASE)),
+    ("list_packages", re.compile(
+        r"(لیست|فهرست|list).{0,20}(پکیج|package)"
+        r"|(پکیج|package)\s*ها.{0,10}(چیه|چیست|کدام|کدومان?)", re.IGNORECASE)),
+    ("list_classes", re.compile(
+        r"(لیست|فهرست|list).{0,20}(کلاس|class)"
+        r"|(کلاس|class)\s*ها.{0,10}(چیه|چیست|کدام|کدومان?)", re.IGNORECASE)),
+]
+
+
+def try_answer_statistical(question: str, store: VectorStore) -> str | None:
+    """اگر سوال آماری ساده باشد پاسخ فارسی برمی‌گرداند، وگرنه None."""
+    matched = None
+    for name, pattern in _PATTERNS:
+        if pattern.search(question):
+            matched = name
+            break
+    if matched is None:
+        return None
+
+    metadatas = store.all_metadatas()
+    if not metadatas:
+        return "ایندکس خالی است؛ اول با دستور index کدبیس را ایندکس کنید."
+
+    if matched == "count_classes":
+        classes = _distinct_classes(metadatas)
+        return f"تعداد کل کلاس‌ها/تایپ‌های ایندکس‌شده: {len(classes)} (محاسبه‌شده مستقیم از ایندکس)"
+    if matched == "count_methods":
+        methods = {
+            (m["file_path"], m["class_name"], m["method_name"], m["start_line"])
+            for m in metadatas
+            if m.get("chunk_type") in ("method", "constructor")
+        }
+        return f"تعداد کل متدها/constructorهای ایندکس‌شده: {len(methods)} (محاسبه‌شده مستقیم از ایندکس)"
+    if matched == "count_files":
+        files = {m.get("file_path") for m in metadatas}
+        return f"تعداد فایل‌های .java ایندکس‌شده: {len(files)} (محاسبه‌شده مستقیم از ایندکس)"
+    if matched == "count_packages":
+        packages = _packages(metadatas)
+        return f"تعداد پکیج‌ها: {len(packages)} (محاسبه‌شده مستقیم از ایندکس)"
+    if matched == "list_packages":
+        packages = sorted(_packages(metadatas))
+        listing = "\n".join(f"  - {p}" for p in packages)
+        return f"پکیج‌های ایندکس‌شده ({len(packages)}):\n{listing}"
+    if matched == "list_classes":
+        classes = sorted(_distinct_classes(metadatas))
+        listing = "\n".join(f"  - {pkg + '.' if pkg else ''}{cls}" for pkg, cls in classes)
+        return f"کلاس‌ها/تایپ‌های ایندکس‌شده ({len(classes)}):\n{listing}"
+    return None
+
+
+def _distinct_classes(metadatas: list[dict]) -> set[tuple[str, str]]:
+    return {
+        (m.get("package", ""), m.get("class_name", ""))
+        for m in metadatas
+        if m.get("chunk_type") in CLASS_LIKE_TYPES
+    }
+
+
+def _packages(metadatas: list[dict]) -> set[str]:
+    return {m.get("package") or "(بدون package)" for m in metadatas}

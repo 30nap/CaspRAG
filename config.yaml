@@ -1,0 +1,31 @@
+# پیکربندی java-doc-assistant
+# تنها مقصد شبکه‌ای ابزار همین base_url است؛ هیچ اتصال دیگری برقرار نمی‌شود.
+
+server:
+  # آدرس سرور داخلی سازگار با Ollama
+  base_url: "http://localhost:11434"
+  # ثانیه؛ برای مدل‌های کند روی سرور داخلی در صورت نیاز بالا ببرید
+  timeout_seconds: 300
+
+models:
+  # مدل تولید پاسخ (endpoint: /api/chat)
+  chat: "qwen2.5-coder:32b"
+  # مدل embedding — جدا از مدل تولید (endpoint: /api/embed)
+  embedding: "nomic-embed-text"
+
+chroma:
+  # مسیر ذخیره‌سازی persistent دیتابیس برداری
+  path: "./.java-doc-index"
+  collection: "java_code"
+
+retrieval:
+  # تعداد چانک‌های بازیابی‌شده برای هر سوال
+  top_k: 8
+
+index:
+  # حداکثر طول متن یک چانک (کاراکتر)؛ متدهای بلندتر برش می‌خورند
+  max_chunk_chars: 6000
+
+output:
+  # پوشه‌ی پیش‌فرض خروجی docgen و ask --save (خارج از کدبیس جاوا)
+  docs_dir: "./generated-docs"

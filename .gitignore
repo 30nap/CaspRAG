@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# خروجی‌های runtime ابزار
+.java-doc-index/
+generated-docs/
