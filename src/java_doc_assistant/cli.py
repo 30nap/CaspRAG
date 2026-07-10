@@ -1,6 +1,9 @@
-"""رابط خط فرمان java-doc-assistant.
+"""رابط خط فرمان casprag.
 
-دستورها:
+اجرای بدون زیر‌دستور، حالت تعاملی (REPL) را باز می‌کند: سوال را مستقیم تایپ کنید
+یا از دستورهای اسلشی مثل /index و /docgen استفاده کنید.
+
+زیر‌دستورها:
   index <path>                ایندکس کردن یک ریپازیتوری/پوشه‌ی جاوا
   ask "<question>"            پرسش؛ پیش‌فرض چاپ در ترمینال، با --save ذخیره در فایل
   docgen --package/--class    تولید مستند Markdown (همیشه فایل می‌سازد)
@@ -72,7 +75,7 @@ def _write_markdown(path: Path, title: str, answer: Answer) -> None:
         parts += [f"- `{src}`" for src in answer.sources]
     parts += [
         "",
-        f"*تولیدشده توسط java-doc-assistant در {datetime.now():%Y-%m-%d %H:%M}*",
+        f"*تولیدشده توسط casprag در {datetime.now():%Y-%m-%d %H:%M}*",
     ]
     path.write_text("\n".join(parts), encoding="utf-8")
 
@@ -88,10 +91,19 @@ def _print_answer(answer: Answer) -> None:
                 click.echo(f"  - {src}")
 
 
-@click.group()
-def main() -> None:
-    """دستیار فقط-خواندنی پرسش‌وپاسخ و مستندسازی برای کدبیس‌های جاوا (RAG لوکال)."""
+@click.group(invoke_without_command=True)
+@click.option("--config", "config_path", default=None, help="مسیر config.yaml")
+@click.pass_context
+def main(ctx: click.Context, config_path: str | None) -> None:
+    """دستیار فقط-خواندنی پرسش‌وپاسخ و مستندسازی برای کدبیس‌های جاوا (RAG لوکال).
+
+    اجرای بدون زیر‌دستور، حالت تعاملی را باز می‌کند.
+    """
     click.echo(BANNER)
+    if ctx.invoked_subcommand is None:
+        from java_doc_assistant.repl import run_repl
+
+        run_repl(_load_config_or_exit(config_path))
 
 
 @main.command()

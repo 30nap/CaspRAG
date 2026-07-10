@@ -111,6 +111,34 @@ def test_docgen_requires_exactly_one_target(env):
     assert result.exit_code != 0
 
 
+def test_interactive_repl(env):
+    """اجرای بدون زیر‌دستور باید REPL را باز کند: سوال آزاد + دستورهای اسلشی."""
+    repl_input = "\n".join([
+        "کل تعداد کلاس‌های پروژه چقدره؟",   # آماری، بدون LLM
+        "متد transfer چیکار می‌کنه؟",        # RAG
+        "/docgen com.example.bank.model",
+        "/save " + str(env["root"] / "docs" / "repl-answer.md"),
+        "/help",
+        "/exit",
+    ]) + "\n"
+    result = env["runner"].invoke(main, ["--config", env["cfg"]], input=repl_input)
+    assert result.exit_code == 0, result.output
+    assert "casprag>" in result.output
+    assert "محاسبه‌شده مستقیم از ایندکس" in result.output
+    assert "پاسخ آزمایشی به فارسی" in result.output
+    assert "/index" in result.output  # خروجی /help
+    assert (env["root"] / "docs" / "doc-com_example_bank_model.md").is_file()
+    assert (env["root"] / "docs" / "repl-answer.md").is_file()
+
+
+def test_repl_unknown_command_and_empty_docgen(env):
+    repl_input = "/foo\n/docgen not.a.real.package\n/exit\n"
+    result = env["runner"].invoke(main, ["--config", env["cfg"]], input=repl_input)
+    assert result.exit_code == 0, result.output
+    assert "دستور ناشناخته" in result.output
+    assert "هیچ چانکی" in result.output
+
+
 def test_codebase_untouched(env):
     """ابزار فقط-خواندنی است: هیچ فایلی داخل sample_project نباید تغییر کند یا اضافه شود."""
     java_files = sorted(p.name for p in SAMPLE.rglob("*") if p.is_file())

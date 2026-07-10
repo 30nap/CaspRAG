@@ -1,6 +1,6 @@
-# Casp RAG — java-doc-assistant
+# Casp RAG
 
-A **read-only** Q&A and documentation assistant for Java codebases (Spring Boot / Spring Batch), built on a fully local RAG pipeline.
+A **read-only** Q&A and documentation assistant for Java codebases (Spring Boot / Spring Batch), built on a fully local RAG pipeline. Ships as the `casprag` command.
 
 - Structural chunking with `tree-sitter-java` at the **whole class/method** level (each chunk carries its javadoc and the enclosing class signature as context)
 - Vector storage in **Chroma** (local, persistent)
@@ -39,23 +39,47 @@ Config path resolution order: `--config` flag > `JAVA_DOC_ASSISTANT_CONFIG` envi
 
 ## Usage
 
+### Interactive mode (recommended)
+
+Run `casprag` with no subcommand inside your codebase folder to get an interactive prompt, similar to a coding-assistant CLI. Type a question directly, or use slash commands:
+
+```
+$ casprag
+
+  ____                  ____      _    ____
+ / ___|__ _ ___ _ __   |  _ \    / \  / ___|
+| |   / _` / __| '_ \  | |_) |  / _ \| |  _
+| |__| (_| \__ \ |_) | |  _ <  / ___ \ |_| |
+ \____\__,_|___/ .__/  |_| \_\/_/   \_\____|
+               |_|
+
+casprag> /index .
+casprag> متد transfer در AccountService چیکار می‌کنه؟
+casprag> /docgen com.example.bank.batch
+casprag> /exit
+```
+
+Slash commands: `/index [path]`, `/docgen <package|class>`, `/save [path]` (save the last answer as Markdown), `/help`, `/exit`. Free text is treated as a question; answers are printed in the terminal and no file is written unless you explicitly `/save`.
+
+### One-shot commands
+
 ```bash
 # 1) Index a Java repository
-java-doc-assistant index /path/to/java/project
+casprag index /path/to/java/project
 
 # 2) Ask a question — output is printed to the terminal by default, no file is created
-java-doc-assistant ask "متد transfer در AccountService چیکار می‌کنه؟"
+casprag ask "متد transfer در AccountService چیکار می‌کنه؟"
 
 # Simple statistical questions are answered directly from the index, without calling the LLM
-java-doc-assistant ask "تعداد کلاس‌های پروژه چقدره؟"
-java-doc-assistant ask "لیست پکیج‌ها"
+casprag ask "تعداد کلاس‌های پروژه چقدره؟"
+casprag ask "لیست پکیج‌ها"
 
 # Save the answer as a Markdown file only with the explicit --save flag
-java-doc-assistant ask "منطق batch را توضیح بده" --save --out report.md
+casprag ask "منطق batch را توضیح بده" --save --out report.md
 
 # 3) Generate Markdown documentation for a package or class (always writes a file)
-java-doc-assistant docgen --package com.example.bank.batch
-java-doc-assistant docgen --class AccountService -o docs/account-service.md
+casprag docgen --package com.example.bank.batch
+casprag docgen --class AccountService -o docs/account-service.md
 ```
 
 ## Testing
@@ -73,7 +97,8 @@ For manual experimentation without a real server, `python3 tests/mock_ollama.py`
 
 ```
 src/java_doc_assistant/
-  cli.py            index / ask / docgen commands
+  cli.py            casprag entry point: index / ask / docgen commands
+  repl.py           interactive mode (free-text questions + slash commands)
   config.py         config.yaml loading (no server URL or model name is hardcoded)
   parser.py         tree-sitter chunking (class/method + javadoc + class signature)
   indexer.py        walk .java files → chunks → embeddings → Chroma

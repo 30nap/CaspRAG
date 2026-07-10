@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-java-doc-assistant = "java_doc_assistant.cli:main"
+casprag = "java_doc_assistant.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
