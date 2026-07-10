@@ -1,87 +1,87 @@
-# java-doc-assistant
+# Casp RAG — java-doc-assistant
 
-دستیار **فقط-خواندنی** پرسش‌وپاسخ و مستندسازی برای کدبیس‌های جاوا (Spring Boot / Spring Batch) با RAG کاملاً لوکال.
+A **read-only** Q&A and documentation assistant for Java codebases (Spring Boot / Spring Batch), built on a fully local RAG pipeline.
 
-- چانک‌سازی ساختاری با `tree-sitter-java` در سطح **کلاس/متد کامل** (javadoc و امضای کلاس دربرگیرنده به‌عنوان context همراه هر چانک ذخیره می‌شود)
-- ذخیره‌سازی برداری در **Chroma** (لوکال و persistent)
-- embedding و تولید پاسخ از طریق سرور داخلی سازگار با **Ollama** (`/api/embed` و `/api/chat`) — آدرس سرور و نام هر دو مدل فقط در `config.yaml` تنظیم می‌شود
-- پاسخ‌ها همیشه **فارسی** و همیشه با ارجاع صریح به مسیر فایل و بازه‌ی خط
+- Structural chunking with `tree-sitter-java` at the **whole class/method** level (each chunk carries its javadoc and the enclosing class signature as context)
+- Vector storage in **Chroma** (local, persistent)
+- Embedding and answer generation through an internal **Ollama-compatible** server (`/api/embed` and `/api/chat`) — the server URL and both model names are configured only in `config.yaml`, never hardcoded
+- Answers are always in **Persian** and always cite the source file path and line range
 
-## محدودیت‌های امنیتی (طراحی‌شده برای کد بانکی)
+## Security constraints (designed for banking code)
 
-- ابزار کدبیس را **فقط می‌خواند**؛ هیچ قابلیت نوشتن/ویرایش فایل کدبیس، apply_diff یا اجرای shell ندارد.
-- تنها محل‌های نوشتن: دایرکتوری ایندکس Chroma (`chroma.path`) و فایل‌های Markdown خروجی (`output.docs_dir`).
-- تنها مقصد شبکه‌ای، `server.base_url` در config است؛ telemetry مربوط به Chroma هم خاموش شده است.
+- The tool only **reads** the codebase; it has no file write/edit, apply_diff, or shell execution capability.
+- The only write locations are the Chroma index directory (`chroma.path`) and generated Markdown output (`output.docs_dir`).
+- The only network destination is `server.base_url` from the config; Chroma telemetry is disabled as well.
 
-## نصب
+## Installation
 
 ```bash
 python3 -m pip install .
 ```
 
-(نیازمند Python 3.11+)
+(Requires Python 3.11+)
 
-## پیکربندی
+## Configuration
 
-فایل `config.yaml` (نمونه در ریشه‌ی ریپازیتوری) را ویرایش کنید:
+Edit `config.yaml` (a sample is provided at the repository root):
 
 ```yaml
 server:
   base_url: "http://your-internal-server:11434"
 models:
-  chat: "qwen2.5-coder:32b"       # مدل تولید پاسخ
-  embedding: "nomic-embed-text"   # مدل embedding (جدا از مدل تولید)
+  chat: "qwen2.5-coder:32b"       # answer-generation model
+  embedding: "nomic-embed-text"   # embedding model (separate from the chat model)
 chroma:
   path: "./.java-doc-index"
 ```
 
-مسیر config با اولویت: `--config` > متغیر محیطی `JAVA_DOC_ASSISTANT_CONFIG` > `./config.yaml`.
+Config path resolution order: `--config` flag > `JAVA_DOC_ASSISTANT_CONFIG` environment variable > `./config.yaml`.
 
-## استفاده
+## Usage
 
 ```bash
-# ۱) ایندکس کردن یک ریپازیتوری جاوا
+# 1) Index a Java repository
 java-doc-assistant index /path/to/java/project
 
-# ۲) پرسش — خروجی پیش‌فرض چاپ در ترمینال است، فایلی ساخته نمی‌شود
+# 2) Ask a question — output is printed to the terminal by default, no file is created
 java-doc-assistant ask "متد transfer در AccountService چیکار می‌کنه؟"
 
-# سوالات آماری ساده بدون فراخوانی مدل، مستقیم از ایندکس جواب می‌گیرند
+# Simple statistical questions are answered directly from the index, without calling the LLM
 java-doc-assistant ask "تعداد کلاس‌های پروژه چقدره؟"
 java-doc-assistant ask "لیست پکیج‌ها"
 
-# ذخیره‌ی پاسخ به‌صورت فایل Markdown فقط با پرچم صریح --save
+# Save the answer as a Markdown file only with the explicit --save flag
 java-doc-assistant ask "منطق batch را توضیح بده" --save --out report.md
 
-# ۳) تولید مستند Markdown برای یک پکیج یا کلاس (همیشه فایل می‌سازد)
+# 3) Generate Markdown documentation for a package or class (always writes a file)
 java-doc-assistant docgen --package com.example.bank.batch
 java-doc-assistant docgen --class AccountService -o docs/account-service.md
 ```
 
-## تست
+## Testing
 
-تست‌ها با یک سرور آزمایشی سازگار با Ollama (بدون مدل واقعی) روی پروژه‌ی نمونه‌ی `sample_project/` اجرا می‌شوند:
+Tests run against the small sample project in `sample_project/` using a mock Ollama-compatible server (no real model needed):
 
 ```bash
 python3 -m pip install pytest
 python3 -m pytest tests/ -v
 ```
 
-برای آزمایش دستی بدون سرور واقعی: `python3 tests/mock_ollama.py` یک سرور آزمایشی روی پورت 11434 بالا می‌آورد.
+For manual experimentation without a real server, `python3 tests/mock_ollama.py` starts a mock server on port 11434.
 
-## ساختار کد
+## Code structure
 
 ```
 src/java_doc_assistant/
-  cli.py            دستورهای index / ask / docgen
-  config.py         بارگذاری config.yaml (هیچ آدرس/مدلی هاردکد نیست)
-  parser.py         چانک‌سازی tree-sitter (کلاس/متد + javadoc + امضای کلاس)
-  indexer.py        پیمایش .java → چانک → embedding → Chroma
-  store.py          اینترفیس VectorStore + پیاده‌سازی Chroma (قابل تعویض)
-  ollama_client.py  اینترفیس‌های EmbeddingClient/ChatClient + پیاده‌سازی Ollama (قابل تعویض)
-  rag.py            بازیابی و ساخت پرامپت برای ask / docgen
-  stats.py          پاسخ آماری rule-based بدون LLM
-  prompts.py        system prompt فارسی و قالب‌های پرسش
+  cli.py            index / ask / docgen commands
+  config.py         config.yaml loading (no server URL or model name is hardcoded)
+  parser.py         tree-sitter chunking (class/method + javadoc + class signature)
+  indexer.py        walk .java files → chunks → embeddings → Chroma
+  store.py          VectorStore interface + Chroma implementation (swappable)
+  ollama_client.py  EmbeddingClient/ChatClient interfaces + Ollama implementation (swappable)
+  rag.py            retrieval and prompt building for ask / docgen
+  stats.py          rule-based statistical answers without the LLM
+  prompts.py        Persian system prompt and question templates
 ```
 
-لایه‌های vector store و کلاینت مدل پشت اینترفیس (ABC) هستند؛ تعویض Chroma یا backend مدل نیازی به تغییر منطق اصلی (`rag.py`, `indexer.py`, `cli.py`) ندارد.
+The vector store and model client layers sit behind interfaces (ABCs); swapping out Chroma or the model backend requires no changes to the core logic (`rag.py`, `indexer.py`, `cli.py`).

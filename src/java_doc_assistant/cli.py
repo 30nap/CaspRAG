@@ -29,6 +29,15 @@ from java_doc_assistant.rag import Answer, RagPipeline
 from java_doc_assistant.stats import try_answer_statistical
 from java_doc_assistant.store import ChromaStore
 
+BANNER = r"""
+  ____                  ____      _    ____
+ / ___|__ _ ___ _ __   |  _ \    / \  / ___|
+| |   / _` / __| '_ \  | |_) |  / _ \| |  _
+| |__| (_| \__ \ |_) | |  _ <  / ___ \ |_| |
+ \____\__,_|___/ .__/  |_| \_\/_/   \_\____|
+               |_|
+"""
+
 
 def _build_store(cfg: Config) -> ChromaStore:
     return ChromaStore(path=cfg.chroma_path, collection=cfg.chroma_collection)
@@ -82,6 +91,7 @@ def _print_answer(answer: Answer) -> None:
 @click.group()
 def main() -> None:
     """دستیار فقط-خواندنی پرسش‌وپاسخ و مستندسازی برای کدبیس‌های جاوا (RAG لوکال)."""
+    click.echo(BANNER)
 
 
 @main.command()
