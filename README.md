@@ -113,8 +113,10 @@ You can bundle casprag (with Python and all dependencies) into one self-containe
 
 ```bash
 python -m pip install . pyinstaller
-pyinstaller casprag.spec
+python -m PyInstaller casprag.spec    # Windows: py -m PyInstaller casprag.spec
 ```
+
+(The module form `python -m PyInstaller` works even when the Python `Scripts` folder is not on `PATH`; the module name is case-sensitive.)
 
 The result is `dist/casprag.exe` on Windows (`dist/casprag` on Linux/macOS, ~75 MB) — copy it anywhere and run it; no Python installation needed. Put a `config.yaml` next to it or pass `--config`. Note: PyInstaller does not cross-compile, so the Windows exe must be built **on Windows**.
 
