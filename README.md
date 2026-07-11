@@ -107,6 +107,21 @@ casprag docgen --package com.example.bank.batch
 casprag docgen --class AccountService -o docs/account-service.md
 ```
 
+## Building a single-file executable
+
+You can bundle casprag (with Python and all dependencies) into one self-contained binary using the provided PyInstaller spec:
+
+```bash
+python -m pip install . pyinstaller
+pyinstaller casprag.spec
+```
+
+The result is `dist/casprag.exe` on Windows (`dist/casprag` on Linux/macOS, ~75 MB) — copy it anywhere and run it; no Python installation needed. Put a `config.yaml` next to it or pass `--config`. Note: PyInstaller does not cross-compile, so the Windows exe must be built **on Windows**.
+
+Alternatively, the `Build single-file executable` GitHub Actions workflow builds both Windows and Linux binaries: run it from the repository's *Actions* tab (or push a `v*` tag) and download the `casprag-windows` artifact.
+
+Two Windows notes: single-file PyInstaller apps unpack themselves to a temp folder on each start, so the first launch takes a few seconds; and some antivirus products flag unsigned PyInstaller binaries as suspicious — building the exe yourself (or via your own CI) is the usual mitigation.
+
 ## Testing
 
 Tests run against the small sample project in `sample_project/` using a mock Ollama-compatible server (no real model needed):

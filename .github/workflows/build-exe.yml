@@ -1,0 +1,42 @@
+name: Build single-file executable
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: casprag-windows
+            binary: dist/casprag.exe
+          - os: ubuntu-latest
+            artifact: casprag-linux
+            binary: dist/casprag
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install . pyinstaller
+
+      - name: Build binary
+        run: pyinstaller casprag.spec
+
+      - name: Smoke test binary
+        shell: bash
+        run: ./${{ matrix.binary }} --help
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.binary }}
