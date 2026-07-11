@@ -11,9 +11,8 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-import click
-
 from java_doc_assistant.config import Config
+from java_doc_assistant.display import echo, prompt_text
 from java_doc_assistant.indexer import index_codebase
 from java_doc_assistant.ollama_client import (
     LLMServerError,
@@ -61,9 +60,9 @@ class ReplSession:
         self._welcome()
         while True:
             try:
-                line = input("casprag> ").strip()
+                line = input(prompt_text("casprag> ")).strip()
             except (EOFError, KeyboardInterrupt):
-                click.echo("\nخداحافظ!")
+                echo("\nخداحافظ!")
                 return
             if not line:
                 continue
@@ -76,10 +75,10 @@ class ReplSession:
     def _welcome(self) -> None:
         count = self._store.count()
         if count:
-            click.echo(f"ایندکس آماده است ({count} چانک). سوال‌تان را بنویسید.")
+            echo(f"ایندکس آماده است ({count} چانک). سوال‌تان را بنویسید.")
         else:
-            click.echo("ایندکس خالی است — اول با /index کدبیس را ایندکس کنید.")
-        click.echo("راهنما: /help — خروج: /exit\n")
+            echo("ایندکس خالی است — اول با /index کدبیس را ایندکس کنید.")
+        echo("راهنما: /help — خروج: /exit\n")
 
     # ---------- دستورهای اسلشی ----------
 
@@ -88,10 +87,10 @@ class ReplSession:
         command, _, arg = line.partition(" ")
         arg = arg.strip()
         if command in ("/exit", "/quit", "/q"):
-            click.echo("خداحافظ!")
+            echo("خداحافظ!")
             return False
         if command == "/help":
-            click.echo(HELP_TEXT)
+            echo(HELP_TEXT)
         elif command == "/index":
             self._do_index(arg or ".")
         elif command == "/docgen":
@@ -99,54 +98,54 @@ class ReplSession:
         elif command == "/save":
             self._do_save(arg)
         else:
-            click.echo(f"دستور ناشناخته: {command} — راهنما: /help")
+            echo(f"دستور ناشناخته: {command} — راهنما: /help")
         return True
 
     def _do_index(self, path_str: str) -> None:
         path = Path(path_str)
         if not path.is_dir():
-            click.echo(f"پوشه پیدا نشد: {path}")
+            echo(f"پوشه پیدا نشد: {path}")
             return
-        click.echo(f"ایندکس کردن {path.resolve()} ...")
+        echo(f"ایندکس کردن {path.resolve()} ...")
         try:
             result = index_codebase(
                 root=path,
                 chunker=JavaChunker(max_chunk_chars=self._cfg.max_chunk_chars),
                 embedder=self._embedder,
                 store=self._store,
-                progress=lambda msg: click.echo(msg),
+                progress=lambda msg: echo(msg),
             )
         except LLMServerError as exc:
-            click.echo(f"خطا: {exc}")
+            echo(f"خطا: {exc}")
             return
-        click.echo(
+        echo(
             f"تمام شد: {result.files_indexed} فایل، {result.chunks_indexed} چانک ایندکس شد"
             + (f"، {result.files_failed} فایل ناموفق" if result.files_failed else "")
         )
 
     def _do_docgen(self, target: str) -> None:
         if not target:
-            click.echo("استفاده: /docgen <package یا class>  (مثال: /docgen com.example.batch)")
+            echo("استفاده: /docgen <package یا class>  (مثال: /docgen com.example.batch)")
             return
         chunks = self._pipeline.chunks_for_package(target)
         if not chunks:
             chunks = self._pipeline.chunks_for_class(target)
         if not chunks:
-            click.echo(f"هیچ چانکی برای «{target}» در ایندکس پیدا نشد.")
+            echo(f"هیچ چانکی برای «{target}» در ایندکس پیدا نشد.")
             return
-        click.echo(f"تولید مستند برای «{target}» با {len(chunks)} چانک ...")
+        echo(f"تولید مستند برای «{target}» با {len(chunks)} چانک ...")
         try:
             answer = self._pipeline.docgen(target, chunks)
         except LLMServerError as exc:
-            click.echo(f"خطا: {exc}")
+            echo(f"خطا: {exc}")
             return
         path = Path(self._cfg.docs_dir) / f"doc-{target.replace('.', '_')}.md"
         self._write_markdown(path, f"مستند {target}", answer)
-        click.echo(f"مستند ذخیره شد: {path}")
+        echo(f"مستند ذخیره شد: {path}")
 
     def _do_save(self, path_str: str) -> None:
         if self._last_answer is None:
-            click.echo("هنوز پاسخی برای ذخیره وجود ندارد؛ اول یک سوال بپرسید.")
+            echo("هنوز پاسخی برای ذخیره وجود ندارد؛ اول یک سوال بپرسید.")
             return
         path = (
             Path(path_str)
@@ -154,27 +153,27 @@ class ReplSession:
             else Path(self._cfg.docs_dir) / f"ask-{datetime.now():%Y%m%d-%H%M%S}.md"
         )
         if path.suffix.lower() != ".md":
-            click.echo(f"خروجی فقط به‌صورت فایل .md ذخیره می‌شود، نه: {path}")
+            echo(f"خروجی فقط به‌صورت فایل .md ذخیره می‌شود، نه: {path}")
             return
         self._write_markdown(path, f"پاسخ: {self._last_question}", self._last_answer)
-        click.echo(f"پاسخ در فایل ذخیره شد: {path}")
+        echo(f"پاسخ در فایل ذخیره شد: {path}")
 
     # ---------- سوال آزاد ----------
 
     def _handle_question(self, question: str) -> None:
         statistical = try_answer_statistical(question, self._store)
         if statistical is not None:
-            click.echo(statistical)
+            echo(statistical)
             return
         try:
             answer = self._pipeline.ask(question)
         except LLMServerError as exc:
-            click.echo(f"خطا: {exc}")
+            echo(f"خطا: {exc}")
             return
         from java_doc_assistant.cli import _print_answer
 
         _print_answer(answer)
-        click.echo()
+        echo()
         self._last_question, self._last_answer = question, answer
 
     # ---------- کمکی ----------

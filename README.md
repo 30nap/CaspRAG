@@ -83,6 +83,10 @@ casprag> /exit
 
 Slash commands: `/index [path]`, `/docgen <package|class>`, `/save [path]` (save the last answer as Markdown), `/help`, `/exit`. Free text is treated as a question; answers are printed in the terminal and no file is written unless you explicitly `/save`.
 
+### Persian (RTL) text in the terminal
+
+Most terminals (Windows cmd/PowerShell in particular) don't apply the Unicode bidi algorithm, so Persian text would appear reversed. casprag automatically converts terminal output to visual order (via `arabic-reshaper` + `python-bidi`) when stdout is a terminal. Piped/redirected output and generated Markdown files keep standard logical order. Override auto-detection with the `CASPRAG_RTL_FIX` environment variable: `1` forces the conversion, `0` disables it (use `0` if your terminal already renders RTL correctly and text looks reversed *because* of the fix).
+
 ### One-shot commands
 
 ```bash

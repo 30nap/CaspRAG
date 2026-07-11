@@ -21,6 +21,7 @@ from pathlib import Path
 import click
 
 from java_doc_assistant.config import Config, ConfigError, load_config
+from java_doc_assistant.display import echo
 from java_doc_assistant.indexer import index_codebase
 from java_doc_assistant.ollama_client import (
     LLMServerError,
@@ -59,7 +60,7 @@ def _load_config_or_exit(config_path: str | None) -> Config:
     try:
         return load_config(config_path)
     except ConfigError as exc:
-        click.echo(f"خطا: {exc}", err=True)
+        echo(f"خطا: {exc}", err=True)
         sys.exit(1)
 
 
@@ -81,14 +82,14 @@ def _write_markdown(path: Path, title: str, answer: Answer) -> None:
 
 
 def _print_answer(answer: Answer) -> None:
-    click.echo(answer.text)
+    echo(answer.text)
     if answer.sources:
-        click.echo("\n--- منابع بازیابی‌شده ---")
+        echo("\n--- منابع بازیابی‌شده ---")
         seen = set()
         for src in answer.sources:
             if src not in seen:
                 seen.add(src)
-                click.echo(f"  - {src}")
+                echo(f"  - {src}")
 
 
 @click.group(invoke_without_command=True)
@@ -99,7 +100,7 @@ def main(ctx: click.Context, config_path: str | None) -> None:
 
     اجرای بدون زیر‌دستور، حالت تعاملی را باز می‌کند.
     """
-    click.echo(BANNER)
+    echo(BANNER)
     if ctx.invoked_subcommand is None:
         from java_doc_assistant.repl import run_repl
 
@@ -116,19 +117,19 @@ def index(path: Path, config_path: str | None) -> None:
     embedder = OllamaEmbeddingClient(cfg.base_url, cfg.embedding_model, cfg.timeout_seconds)
     chunker = JavaChunker(max_chunk_chars=cfg.max_chunk_chars)
 
-    click.echo(f"ایندکس کردن {path} ...")
+    echo(f"ایندکس کردن {path} ...")
     try:
         result = index_codebase(
             root=path,
             chunker=chunker,
             embedder=embedder,
             store=store,
-            progress=lambda msg: click.echo(msg),
+            progress=lambda msg: echo(msg),
         )
     except LLMServerError as exc:
-        click.echo(f"خطا: {exc}", err=True)
+        echo(f"خطا: {exc}", err=True)
         sys.exit(2)
-    click.echo(
+    echo(
         f"\nتمام شد: {result.files_indexed} فایل، {result.chunks_indexed} چانک ایندکس شد"
         + (f"، {result.files_failed} فایل ناموفق" if result.files_failed else "")
         + f"\nایندکس در: {cfg.chroma_path}"
@@ -154,7 +155,7 @@ def ask(question: str, save: bool, out_path: Path | None, top_k: int | None,
     # سوالات آماری ساده بدون فراخوانی مدل، مستقیم از متادیتای ایندکس پاسخ می‌گیرند
     statistical = try_answer_statistical(question, store)
     if statistical is not None:
-        click.echo(statistical)
+        echo(statistical)
         return
 
     pipeline = RagPipeline(
@@ -166,7 +167,7 @@ def ask(question: str, save: bool, out_path: Path | None, top_k: int | None,
     try:
         answer = pipeline.ask(question)
     except LLMServerError as exc:
-        click.echo(f"خطا: {exc}", err=True)
+        echo(f"خطا: {exc}", err=True)
         sys.exit(2)
 
     if save:
@@ -174,7 +175,7 @@ def ask(question: str, save: bool, out_path: Path | None, top_k: int | None,
             Path(cfg.docs_dir) / f"ask-{datetime.now():%Y%m%d-%H%M%S}.md"
         )
         _write_markdown(target, f"پاسخ: {question}", answer)
-        click.echo(f"پاسخ در فایل ذخیره شد: {target}")
+        echo(f"پاسخ در فایل ذخیره شد: {target}")
     else:
         _print_answer(answer)
 
@@ -199,20 +200,20 @@ def docgen(package: str | None, class_name: str | None, out_path: Path | None,
         else pipeline.chunks_for_class(class_name)
     )
     if not chunks:
-        click.echo(f"هیچ چانکی برای «{target}» در ایندکس پیدا نشد.", err=True)
+        echo(f"هیچ چانکی برای «{target}» در ایندکس پیدا نشد.", err=True)
         sys.exit(1)
 
-    click.echo(f"تولید مستند برای «{target}» با {len(chunks)} چانک ...")
+    echo(f"تولید مستند برای «{target}» با {len(chunks)} چانک ...")
     try:
         answer = pipeline.docgen(target, chunks)
     except LLMServerError as exc:
-        click.echo(f"خطا: {exc}", err=True)
+        echo(f"خطا: {exc}", err=True)
         sys.exit(2)
 
     safe_name = target.replace(".", "_")
     final_path = out_path or (Path(cfg.docs_dir) / f"doc-{safe_name}.md")
     _write_markdown(final_path, f"مستند {target}", answer)
-    click.echo(f"مستند ذخیره شد: {final_path}")
+    echo(f"مستند ذخیره شد: {final_path}")
 
 
 if __name__ == "__main__":
