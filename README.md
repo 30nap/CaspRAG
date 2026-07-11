@@ -16,10 +16,32 @@ A **read-only** Q&A and documentation assistant for Java codebases (Spring Boot 
 ## Installation
 
 ```bash
-python3 -m pip install .
+python3 -m pip install .    # Windows: py -m pip install .
 ```
 
 (Requires Python 3.11+)
+
+### Windows: `casprag` is not recognized
+
+pip installs `casprag.exe` into your Python `Scripts` folder; on many Windows setups (Microsoft Store Python, `--user` installs) that folder is not on `PATH` — pip prints a yellow warning like `WARNING: The script casprag.exe is installed in '...' which is not on PATH` during install.
+
+Pick either fix:
+
+1. **No PATH change needed** — run it as a module instead:
+
+   ```bat
+   py -m casprag
+   py -m casprag ask "تعداد کلاس‌های پروژه چقدره؟"
+   ```
+
+2. **Add the Scripts folder to PATH** — find it, then add it to your user PATH and open a new terminal:
+
+   ```bat
+   py -c "import sysconfig; print(sysconfig.get_path('scripts'))"
+   py -c "import site,os; print(os.path.join(site.USER_BASE,'Scripts'))"  &rem for --user installs
+   ```
+
+   Add the printed folder via *Settings → System → About → Advanced system settings → Environment Variables → Path*, then restart the terminal so `casprag` works directly.
 
 ## Configuration
 
