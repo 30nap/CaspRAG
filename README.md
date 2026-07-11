@@ -5,7 +5,8 @@ A **read-only** Q&A and documentation assistant for Java codebases (Spring Boot 
 - Structural chunking with `tree-sitter-java` at the **whole class/method** level (each chunk carries its javadoc and the enclosing class signature as context)
 - Vector storage in **Chroma** (local, persistent)
 - Embedding and answer generation through an internal **Ollama-compatible** server (`/api/embed` and `/api/chat`) — the server URL and both model names are configured only in `config.yaml`, never hardcoded
-- Answers are always in **Persian** and always cite the source file path and line range
+- Questions can be asked in **Persian or English**; every answer cites the source file path and line range
+- Language contract: **terminal output is English** (avoids broken RTL rendering in terminals); **generated Markdown files (`docgen`, `--save`, `/save`) are Persian**
 
 ## Security constraints (designed for banking code)
 
@@ -81,11 +82,7 @@ casprag> /docgen com.example.bank.batch
 casprag> /exit
 ```
 
-Slash commands: `/index [path]`, `/docgen <package|class>`, `/save [path]` (save the last answer as Markdown), `/help`, `/exit`. Free text is treated as a question; answers are printed in the terminal and no file is written unless you explicitly `/save`.
-
-### Persian (RTL) text in the terminal
-
-Most terminals (Windows cmd/PowerShell in particular) don't apply the Unicode bidi algorithm, so Persian text would appear reversed. casprag automatically converts terminal output to visual order (via `arabic-reshaper` + `python-bidi`) when stdout is a terminal. Piped/redirected output and generated Markdown files keep standard logical order. Override auto-detection with the `CASPRAG_RTL_FIX` environment variable: `1` forces the conversion, `0` disables it (use `0` if your terminal already renders RTL correctly and text looks reversed *because* of the fix).
+Slash commands: `/index [path]`, `/docgen <package|class>`, `/save [path]` (regenerates the last answer in Persian and saves it as Markdown), `/help`, `/exit`. Free text is treated as a question (Persian or English); answers are printed in the terminal in English and no file is written unless you explicitly `/save` or `/docgen`.
 
 ### One-shot commands
 
@@ -93,17 +90,19 @@ Most terminals (Windows cmd/PowerShell in particular) don't apply the Unicode bi
 # 1) Index a Java repository
 casprag index /path/to/java/project
 
-# 2) Ask a question — output is printed to the terminal by default, no file is created
+# 2) Ask a question (Persian or English) — the answer is printed to the terminal
+#    in English by default, no file is created
 casprag ask "متد transfer در AccountService چیکار می‌کنه؟"
+casprag ask "What does the transfer method do?"
 
 # Simple statistical questions are answered directly from the index, without calling the LLM
 casprag ask "تعداد کلاس‌های پروژه چقدره؟"
-casprag ask "لیست پکیج‌ها"
+casprag ask "how many classes are there?"
 
-# Save the answer as a Markdown file only with the explicit --save flag
+# Save the answer as a Persian Markdown file only with the explicit --save flag
 casprag ask "منطق batch را توضیح بده" --save --out report.md
 
-# 3) Generate Markdown documentation for a package or class (always writes a file)
+# 3) Generate Persian Markdown documentation for a package or class (always writes a file)
 casprag docgen --package com.example.bank.batch
 casprag docgen --class AccountService -o docs/account-service.md
 ```

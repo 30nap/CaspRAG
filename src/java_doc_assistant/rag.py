@@ -12,8 +12,8 @@ from java_doc_assistant.ollama_client import ChatClient, EmbeddingClient
 from java_doc_assistant.prompts import (
     ASK_USER_TEMPLATE,
     DOCGEN_USER_TEMPLATE,
-    SYSTEM_PROMPT,
     format_context,
+    system_prompt,
 )
 from java_doc_assistant.store import RetrievedChunk, VectorStore
 
@@ -37,31 +37,32 @@ class RagPipeline:
         self._chat = chat
         self._top_k = top_k
 
-    def ask(self, question: str) -> Answer:
+    def ask(self, question: str, lang: str = "en") -> Answer:
+        """پاسخ به سوال؛ lang="en" برای ترمینال، lang="fa" برای ذخیره در فایل."""
         chunks = self._retrieve(question)
         if not chunks:
             return Answer(
-                text="اطلاعات کافی در ایندکس در دسترس نیست. "
-                "مطمئن شوید کدبیس با دستور index ایندکس شده است.",
+                text="No relevant chunks found in the index. "
+                "Make sure the codebase is indexed with the index command.",
                 sources=[],
             )
         user_prompt = ASK_USER_TEMPLATE.format(
             context=format_context(chunks), question=question
         )
-        text = self._chat.chat(SYSTEM_PROMPT, user_prompt)
+        text = self._chat.chat(system_prompt(lang), user_prompt)
         return Answer(text=text, sources=[c.source_ref for c in chunks])
 
     def docgen(self, target: str, chunks: list[RetrievedChunk]) -> Answer:
-        """تولید مستند Markdown برای چانک‌های داده‌شده (مثلاً یک پکیج یا کلاس)."""
+        """تولید مستند Markdown فارسی برای چانک‌های داده‌شده (پکیج یا کلاس)."""
         if not chunks:
             return Answer(
-                text=f"هیچ چانکی برای «{target}» در ایندکس پیدا نشد.",
+                text=f'No chunks found in the index for "{target}".',
                 sources=[],
             )
         user_prompt = DOCGEN_USER_TEMPLATE.format(
             context=format_context(chunks), target=target
         )
-        text = self._chat.chat(SYSTEM_PROMPT, user_prompt)
+        text = self._chat.chat(system_prompt("fa"), user_prompt)
         return Answer(text=text, sources=[c.source_ref for c in chunks])
 
     def chunks_for_package(self, package: str, limit: int = 60) -> list[RetrievedChunk]:

@@ -35,16 +35,18 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/embeddings":
             body = {"embedding": fake_embedding(payload.get("prompt", ""))}
         elif self.path == "/api/chat":
-            user = next(
-                (m["content"] for m in payload.get("messages", []) if m["role"] == "user"),
-                "",
-            )
-            refs = re.findall(r"([\w/.-]+\.java) \(خطوط (\d+)-(\d+)\)", user)
-            cited = "؛ ".join(f"{f} خطوط {a}-{b}" for f, a, b in refs[:3]) or "منبعی یافت نشد"
+            messages = payload.get("messages", [])
+            system = next((m["content"] for m in messages if m["role"] == "system"), "")
+            user = next((m["content"] for m in messages if m["role"] == "user"), "")
+            # زبان خواسته‌شده را از system prompt تشخیص بده تا تست‌ها بتوانند
+            # جدا بودن پاسخ ترمینال (en) از فایل (fa) را چک کنند
+            lang = "fa" if "فارسی" in system else "en"
+            refs = re.findall(r"([\w/.-]+\.java) \(lines (\d+)-(\d+)\)", user)
+            cited = ", ".join(f"{f} lines {a}-{b}" for f, a, b in refs[:3]) or "no sources"
             body = {
                 "message": {
                     "role": "assistant",
-                    "content": f"[پاسخ آزمایشی به فارسی] بر اساس چانک‌های بازیابی‌شده: {cited}",
+                    "content": f"[mock answer lang={lang}] based on retrieved chunks: {cited}",
                 },
                 "done": True,
             }

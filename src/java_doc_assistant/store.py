@@ -22,7 +22,7 @@ class RetrievedChunk:
     def source_ref(self) -> str:
         return (
             f"{self.metadata.get('file_path', '?')}"
-            f" (خطوط {self.metadata.get('start_line', '?')}-{self.metadata.get('end_line', '?')})"
+            f" (lines {self.metadata.get('start_line', '?')}-{self.metadata.get('end_line', '?')})"
         )
 
 

@@ -47,32 +47,32 @@ def try_answer_statistical(question: str, store: VectorStore) -> str | None:
 
     metadatas = store.all_metadatas()
     if not metadatas:
-        return "ایندکس خالی است؛ اول با دستور index کدبیس را ایندکس کنید."
+        return "The index is empty; index a codebase first with the index command."
 
     if matched == "count_classes":
         classes = _distinct_classes(metadatas)
-        return f"تعداد کل کلاس‌ها/تایپ‌های ایندکس‌شده: {len(classes)} (محاسبه‌شده مستقیم از ایندکس)"
+        return f"Total indexed classes/types: {len(classes)} (computed directly from the index)"
     if matched == "count_methods":
         methods = {
             (m["file_path"], m["class_name"], m["method_name"], m["start_line"])
             for m in metadatas
             if m.get("chunk_type") in ("method", "constructor")
         }
-        return f"تعداد کل متدها/constructorهای ایندکس‌شده: {len(methods)} (محاسبه‌شده مستقیم از ایندکس)"
+        return f"Total indexed methods/constructors: {len(methods)} (computed directly from the index)"
     if matched == "count_files":
         files = {m.get("file_path") for m in metadatas}
-        return f"تعداد فایل‌های .java ایندکس‌شده: {len(files)} (محاسبه‌شده مستقیم از ایندکس)"
+        return f"Total indexed .java files: {len(files)} (computed directly from the index)"
     if matched == "count_packages":
         packages = _packages(metadatas)
-        return f"تعداد پکیج‌ها: {len(packages)} (محاسبه‌شده مستقیم از ایندکس)"
+        return f"Total packages: {len(packages)} (computed directly from the index)"
     if matched == "list_packages":
         packages = sorted(_packages(metadatas))
         listing = "\n".join(f"  - {p}" for p in packages)
-        return f"پکیج‌های ایندکس‌شده ({len(packages)}):\n{listing}"
+        return f"Indexed packages ({len(packages)}):\n{listing}"
     if matched == "list_classes":
         classes = sorted(_distinct_classes(metadatas))
         listing = "\n".join(f"  - {pkg + '.' if pkg else ''}{cls}" for pkg, cls in classes)
-        return f"کلاس‌ها/تایپ‌های ایندکس‌شده ({len(classes)}):\n{listing}"
+        return f"Indexed classes/types ({len(classes)}):\n{listing}"
     return None
 
 
@@ -85,4 +85,4 @@ def _distinct_classes(metadatas: list[dict]) -> set[tuple[str, str]]:
 
 
 def _packages(metadatas: list[dict]) -> set[str]:
-    return {m.get("package") or "(بدون package)" for m in metadatas}
+    return {m.get("package") or "(default package)" for m in metadatas}

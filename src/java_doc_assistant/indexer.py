@@ -65,14 +65,14 @@ def index_codebase(
         except Exception as exc:  # فایل خراب نباید کل ایندکس را متوقف کند
             files_failed += 1
             if progress:
-                progress(f"  ! خطا در {rel_path}: {exc}")
+                progress(f"  ! error in {rel_path}: {exc}")
             continue
         # چانک‌های قدیمی همین فایل حذف می‌شوند تا ایندکس مجدد باقی‌مانده نگذارد
         store.delete_by_metadata({"file_path": rel_path})
         pending.extend(file_chunks)
         files_indexed += 1
         if progress:
-            progress(f"  + {rel_path} ({len(file_chunks)} چانک)")
+            progress(f"  + {rel_path} ({len(file_chunks)} chunks)")
         while len(pending) >= embed_batch_size:
             batch, rest = pending[:embed_batch_size], pending[embed_batch_size:]
             pending.clear()

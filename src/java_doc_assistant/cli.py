@@ -1,15 +1,19 @@
-"""رابط خط فرمان casprag.
+"""casprag command-line interface.
 
-اجرای بدون زیر‌دستور، حالت تعاملی (REPL) را باز می‌کند: سوال را مستقیم تایپ کنید
-یا از دستورهای اسلشی مثل /index و /docgen استفاده کنید.
+Running with no subcommand opens the interactive mode (REPL): type a question
+directly (Persian or English) or use slash commands like /index and /docgen.
 
-زیر‌دستورها:
-  index <path>                ایندکس کردن یک ریپازیتوری/پوشه‌ی جاوا
-  ask "<question>"            پرسش؛ پیش‌فرض چاپ در ترمینال، با --save ذخیره در فایل
-  docgen --package/--class    تولید مستند Markdown (همیشه فایل می‌سازد)
+Subcommands:
+  index <path>                index a Java repository/folder
+  ask "<question>"            ask a question; prints to the terminal by default,
+                              --save writes the answer to a Persian Markdown file
+  docgen --package/--class    generate a Persian Markdown document (always a file)
 
-این ابزار فقط-خواندنی است: کدبیس را هرگز تغییر نمی‌دهد، دستور shell اجرا نمی‌کند
-و تنها خروجی‌های آن دایرکتوری ایندکس Chroma و فایل‌های Markdown تولیدی هستند.
+Terminal output is English; generated Markdown files are Persian.
+
+This tool is read-only: it never modifies the codebase, never runs shell
+commands, and its only outputs are the Chroma index directory and generated
+Markdown files.
 """
 
 from __future__ import annotations
@@ -21,7 +25,6 @@ from pathlib import Path
 import click
 
 from java_doc_assistant.config import Config, ConfigError, load_config
-from java_doc_assistant.display import echo
 from java_doc_assistant.indexer import index_codebase
 from java_doc_assistant.ollama_client import (
     LLMServerError,
@@ -60,14 +63,14 @@ def _load_config_or_exit(config_path: str | None) -> Config:
     try:
         return load_config(config_path)
     except ConfigError as exc:
-        echo(f"خطا: {exc}", err=True)
+        click.echo(f"Error: {exc}", err=True)
         sys.exit(1)
 
 
 def _write_markdown(path: Path, title: str, answer: Answer) -> None:
     if path.suffix.lower() != ".md":
         raise click.ClickException(
-            f"خروجی فقط به‌صورت فایل .md ذخیره می‌شود، نه: {path}"
+            f"Output can only be saved as a .md file, not: {path}"
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     parts = [f"# {title}", "", answer.text]
@@ -82,25 +85,25 @@ def _write_markdown(path: Path, title: str, answer: Answer) -> None:
 
 
 def _print_answer(answer: Answer) -> None:
-    echo(answer.text)
+    click.echo(answer.text)
     if answer.sources:
-        echo("\n--- منابع بازیابی‌شده ---")
+        click.echo("\n--- Sources ---")
         seen = set()
         for src in answer.sources:
             if src not in seen:
                 seen.add(src)
-                echo(f"  - {src}")
+                click.echo(f"  - {src}")
 
 
 @click.group(invoke_without_command=True)
-@click.option("--config", "config_path", default=None, help="مسیر config.yaml")
+@click.option("--config", "config_path", default=None, help="path to config.yaml")
 @click.pass_context
 def main(ctx: click.Context, config_path: str | None) -> None:
-    """دستیار فقط-خواندنی پرسش‌وپاسخ و مستندسازی برای کدبیس‌های جاوا (RAG لوکال).
+    """Read-only Q&A and documentation assistant for Java codebases (local RAG).
 
-    اجرای بدون زیر‌دستور، حالت تعاملی را باز می‌کند.
+    Run with no subcommand to open the interactive mode.
     """
-    echo(BANNER)
+    click.echo(BANNER)
     if ctx.invoked_subcommand is None:
         from java_doc_assistant.repl import run_repl
 
@@ -109,53 +112,53 @@ def main(ctx: click.Context, config_path: str | None) -> None:
 
 @main.command()
 @click.argument("path", type=click.Path(exists=True, file_okay=False, path_type=Path))
-@click.option("--config", "config_path", default=None, help="مسیر config.yaml")
+@click.option("--config", "config_path", default=None, help="path to config.yaml")
 def index(path: Path, config_path: str | None) -> None:
-    """ایندکس کردن فایل‌های .java یک ریپازیتوری یا پوشه."""
+    """Index the .java files of a repository or folder."""
     cfg = _load_config_or_exit(config_path)
     store = _build_store(cfg)
     embedder = OllamaEmbeddingClient(cfg.base_url, cfg.embedding_model, cfg.timeout_seconds)
     chunker = JavaChunker(max_chunk_chars=cfg.max_chunk_chars)
 
-    echo(f"ایندکس کردن {path} ...")
+    click.echo(f"Indexing {path} ...")
     try:
         result = index_codebase(
             root=path,
             chunker=chunker,
             embedder=embedder,
             store=store,
-            progress=lambda msg: echo(msg),
+            progress=lambda msg: click.echo(msg),
         )
     except LLMServerError as exc:
-        echo(f"خطا: {exc}", err=True)
+        click.echo(f"Error: {exc}", err=True)
         sys.exit(2)
-    echo(
-        f"\nتمام شد: {result.files_indexed} فایل، {result.chunks_indexed} چانک ایندکس شد"
-        + (f"، {result.files_failed} فایل ناموفق" if result.files_failed else "")
-        + f"\nایندکس در: {cfg.chroma_path}"
+    click.echo(
+        f"\nDone: {result.files_indexed} files, {result.chunks_indexed} chunks indexed"
+        + (f", {result.files_failed} files failed" if result.files_failed else "")
+        + f"\nIndex stored at: {cfg.chroma_path}"
     )
 
 
 @main.command()
 @click.argument("question")
 @click.option("--save", is_flag=True, default=False,
-              help="ذخیره‌ی پاسخ به‌صورت فایل Markdown به‌جای چاپ صرف در ترمینال")
+              help="save the answer as a Persian Markdown file instead of printing it")
 @click.option("--out", "out_path", type=click.Path(path_type=Path), default=None,
-              help="مسیر فایل خروجی (فقط همراه --save؛ پیش‌فرض داخل output.docs_dir)")
-@click.option("-k", "top_k", type=int, default=None, help="تعداد چانک‌های بازیابی‌شده")
-@click.option("--config", "config_path", default=None, help="مسیر config.yaml")
+              help="output file path (only with --save; defaults into output.docs_dir)")
+@click.option("-k", "top_k", type=int, default=None, help="number of chunks to retrieve")
+@click.option("--config", "config_path", default=None, help="path to config.yaml")
 def ask(question: str, save: bool, out_path: Path | None, top_k: int | None,
         config_path: str | None) -> None:
-    """پرسش درباره‌ی کدبیس ایندکس‌شده؛ خروجی پیش‌فرض چاپ در ترمینال است."""
+    """Ask about the indexed codebase (Persian or English); prints to the terminal by default."""
     if out_path is not None and not save:
-        raise click.UsageError("--out فقط همراه --save معنا دارد.")
+        raise click.UsageError("--out only makes sense together with --save.")
     cfg = _load_config_or_exit(config_path)
     store = _build_store(cfg)
 
-    # سوالات آماری ساده بدون فراخوانی مدل، مستقیم از متادیتای ایندکس پاسخ می‌گیرند
+    # simple statistical questions are answered directly from index metadata, no LLM call
     statistical = try_answer_statistical(question, store)
     if statistical is not None:
-        echo(statistical)
+        click.echo(statistical)
         return
 
     pipeline = RagPipeline(
@@ -165,9 +168,10 @@ def ask(question: str, save: bool, out_path: Path | None, top_k: int | None,
         top_k=top_k or cfg.top_k,
     )
     try:
-        answer = pipeline.ask(question)
+        # terminal answers are English; answers saved to a file are Persian
+        answer = pipeline.ask(question, lang="fa" if save else "en")
     except LLMServerError as exc:
-        echo(f"خطا: {exc}", err=True)
+        click.echo(f"Error: {exc}", err=True)
         sys.exit(2)
 
     if save:
@@ -175,22 +179,23 @@ def ask(question: str, save: bool, out_path: Path | None, top_k: int | None,
             Path(cfg.docs_dir) / f"ask-{datetime.now():%Y%m%d-%H%M%S}.md"
         )
         _write_markdown(target, f"پاسخ: {question}", answer)
-        echo(f"پاسخ در فایل ذخیره شد: {target}")
+        click.echo(f"Answer saved to: {target}")
     else:
         _print_answer(answer)
 
 
 @main.command()
-@click.option("--package", "package", default=None, help="نام کامل پکیج (مثل com.example.batch)")
-@click.option("--class", "class_name", default=None, help="نام کلاس (ساده یا کامل)")
+@click.option("--package", "package", default=None,
+              help="fully qualified package name (e.g. com.example.batch)")
+@click.option("--class", "class_name", default=None, help="class name (simple or qualified)")
 @click.option("-o", "--out", "out_path", type=click.Path(path_type=Path), default=None,
-              help="مسیر فایل Markdown خروجی (پیش‌فرض داخل output.docs_dir)")
-@click.option("--config", "config_path", default=None, help="مسیر config.yaml")
+              help="output Markdown file path (defaults into output.docs_dir)")
+@click.option("--config", "config_path", default=None, help="path to config.yaml")
 def docgen(package: str | None, class_name: str | None, out_path: Path | None,
            config_path: str | None) -> None:
-    """تولید مستند Markdown برای یک پکیج یا کلاس (همیشه فایل می‌سازد)."""
+    """Generate a Persian Markdown document for a package or class (always writes a file)."""
     if bool(package) == bool(class_name):
-        raise click.UsageError("دقیقاً یکی از --package یا --class را مشخص کنید.")
+        raise click.UsageError("Specify exactly one of --package or --class.")
     cfg = _load_config_or_exit(config_path)
     pipeline = _build_pipeline(cfg)
 
@@ -200,20 +205,20 @@ def docgen(package: str | None, class_name: str | None, out_path: Path | None,
         else pipeline.chunks_for_class(class_name)
     )
     if not chunks:
-        echo(f"هیچ چانکی برای «{target}» در ایندکس پیدا نشد.", err=True)
+        click.echo(f'No chunks found in the index for "{target}".', err=True)
         sys.exit(1)
 
-    echo(f"تولید مستند برای «{target}» با {len(chunks)} چانک ...")
+    click.echo(f'Generating documentation for "{target}" from {len(chunks)} chunks ...')
     try:
         answer = pipeline.docgen(target, chunks)
     except LLMServerError as exc:
-        echo(f"خطا: {exc}", err=True)
+        click.echo(f"Error: {exc}", err=True)
         sys.exit(2)
 
     safe_name = target.replace(".", "_")
     final_path = out_path or (Path(cfg.docs_dir) / f"doc-{safe_name}.md")
     _write_markdown(final_path, f"مستند {target}", answer)
-    echo(f"مستند ذخیره شد: {final_path}")
+    click.echo(f"Document saved to: {final_path}")
 
 
 if __name__ == "__main__":

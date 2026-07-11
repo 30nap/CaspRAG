@@ -46,9 +46,9 @@ def load_config(path: str | None = None) -> Config:
     cfg_path = find_config_path(path)
     if not cfg_path.is_file():
         raise ConfigError(
-            f"فایل پیکربندی پیدا نشد: {cfg_path}\n"
-            f"یک config.yaml بسازید یا مسیر آن را با --config یا "
-            f"متغیر محیطی {DEFAULT_CONFIG_ENV} مشخص کنید."
+            f"Config file not found: {cfg_path}\n"
+            f"Create a config.yaml or point to one with --config or the "
+            f"{DEFAULT_CONFIG_ENV} environment variable."
         )
     with open(cfg_path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
@@ -56,7 +56,7 @@ def load_config(path: str | None = None) -> Config:
     def section(name: str) -> dict:
         value = raw.get(name) or {}
         if not isinstance(value, dict):
-            raise ConfigError(f"بخش '{name}' در config.yaml باید یک mapping باشد.")
+            raise ConfigError(f"Section '{name}' in config.yaml must be a mapping.")
         return value
 
     server = section("server")
@@ -69,12 +69,12 @@ def load_config(path: str | None = None) -> Config:
     base_url = str(server.get("base_url", "")).rstrip("/")
     if not base_url.startswith(("http://", "https://")):
         raise ConfigError(
-            "server.base_url باید یک آدرس http/https معتبر باشد (آدرس سرور داخلی Ollama)."
+            "server.base_url must be a valid http/https URL (the internal Ollama-compatible server)."
         )
     chat_model = str(models.get("chat", "")).strip()
     embedding_model = str(models.get("embedding", "")).strip()
     if not chat_model or not embedding_model:
-        raise ConfigError("models.chat و models.embedding هر دو باید در config.yaml مشخص شوند.")
+        raise ConfigError("models.chat and models.embedding must both be set in config.yaml.")
 
     return Config(
         base_url=base_url,
