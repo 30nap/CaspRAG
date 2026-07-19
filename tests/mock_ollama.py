@@ -28,6 +28,7 @@ def fake_embedding(text: str) -> list[float]:
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):  # noqa: N802
+        self.server.requests.append(self.path)  # برای تست تفکیک سرور chat/embedding
         length = int(self.headers.get("Content-Length", 0))
         payload = json.loads(self.rfile.read(length) or b"{}")
         if self.path == "/api/embed":
@@ -67,6 +68,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def start_server(port: int = 0) -> tuple[ThreadingHTTPServer, str]:
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    server.requests = []  # مسیرهای فراخوانی‌شده، برای assert در تست‌ها
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server, f"http://127.0.0.1:{server.server_address[1]}"

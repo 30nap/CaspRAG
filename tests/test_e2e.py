@@ -160,6 +160,43 @@ def test_repl_unknown_command_and_empty_docgen(env):
     assert "No chunks found" in result.output
 
 
+def test_split_chat_and_embedding_servers(tmp_path):
+    """chat روی سرور شبکه و embedding روی Ollama لوکال جدا — هر کدام باید فقط
+    درخواست‌های خودش را بگیرد."""
+    chat_server, chat_url = start_server()
+    embed_server, embed_url = start_server()
+    config = {
+        "server": {
+            "base_url": chat_url,               # سرور اصلی (chat)
+            "embedding_base_url": embed_url,    # Ollama لوکال برای embedding
+            "timeout_seconds": 30,
+        },
+        "models": {"chat": "mock-chat", "embedding": "mock-embed"},
+        "chroma": {"path": str(tmp_path / "index"), "collection": "java_code"},
+        "retrieval": {"top_k": 5},
+        "index": {"max_chunk_chars": 6000},
+        "output": {"docs_dir": str(tmp_path / "docs")},
+    }
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["index", str(SAMPLE), "--config", str(cfg_path)])
+    assert result.exit_code == 0, result.output
+    result = runner.invoke(main, ["ask", "what does transfer do?", "--config", str(cfg_path)])
+    assert result.exit_code == 0, result.output
+    assert "[mock answer lang=en]" in result.output
+
+    # embedding فقط به سرور embedding، chat فقط به سرور chat
+    assert any(p.startswith("/api/embed") for p in embed_server.requests)
+    assert not any(p.startswith("/api/chat") for p in embed_server.requests)
+    assert any(p == "/api/chat" for p in chat_server.requests)
+    assert not any(p.startswith("/api/embed") for p in chat_server.requests)
+
+    chat_server.shutdown()
+    embed_server.shutdown()
+
+
 def test_codebase_untouched(env):
     """ابزار فقط-خواندنی است: هیچ فایلی داخل sample_project نباید تغییر کند یا اضافه شود."""
     java_files = sorted(p.name for p in SAMPLE.rglob("*") if p.is_file())

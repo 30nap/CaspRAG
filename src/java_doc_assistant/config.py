@@ -18,7 +18,8 @@ class ConfigError(Exception):
 
 @dataclass(frozen=True)
 class Config:
-    base_url: str
+    chat_base_url: str
+    embedding_base_url: str
     timeout_seconds: int
     chat_model: str
     embedding_model: str
@@ -66,10 +67,20 @@ def load_config(path: str | None = None) -> Config:
     index = section("index")
     output = section("output")
 
-    base_url = str(server.get("base_url", "")).rstrip("/")
-    if not base_url.startswith(("http://", "https://")):
+    # base_url پیش‌فرض هر دو سرویس است؛ chat_base_url و embedding_base_url
+    # در صورت نیاز (مثلاً embedding روی Ollama لوکال) جدا تنظیم می‌شوند
+    base_url = str(server.get("base_url", "") or "").rstrip("/")
+    chat_base_url = str(server.get("chat_base_url", "") or base_url).rstrip("/")
+    embedding_base_url = str(server.get("embedding_base_url", "") or base_url).rstrip("/")
+    if not chat_base_url.startswith(("http://", "https://")):
         raise ConfigError(
-            "server.base_url must be a valid http/https URL (the internal Ollama-compatible server)."
+            "The chat server URL must be a valid http/https URL — "
+            "set server.base_url (or server.chat_base_url) in config.yaml."
+        )
+    if not embedding_base_url.startswith(("http://", "https://")):
+        raise ConfigError(
+            "The embedding server URL must be a valid http/https URL — "
+            "set server.base_url (or server.embedding_base_url) in config.yaml."
         )
     chat_model = str(models.get("chat", "")).strip()
     embedding_model = str(models.get("embedding", "")).strip()
@@ -77,7 +88,8 @@ def load_config(path: str | None = None) -> Config:
         raise ConfigError("models.chat and models.embedding must both be set in config.yaml.")
 
     return Config(
-        base_url=base_url,
+        chat_base_url=chat_base_url,
+        embedding_base_url=embedding_base_url,
         timeout_seconds=int(server.get("timeout_seconds", 300)),
         chat_model=chat_model,
         embedding_model=embedding_model,

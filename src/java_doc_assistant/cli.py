@@ -53,8 +53,8 @@ def _build_store(cfg: Config) -> ChromaStore:
 def _build_pipeline(cfg: Config) -> RagPipeline:
     return RagPipeline(
         store=_build_store(cfg),
-        embedder=OllamaEmbeddingClient(cfg.base_url, cfg.embedding_model, cfg.timeout_seconds),
-        chat=OllamaChatClient(cfg.base_url, cfg.chat_model, cfg.timeout_seconds),
+        embedder=OllamaEmbeddingClient(cfg.embedding_base_url, cfg.embedding_model, cfg.timeout_seconds),
+        chat=OllamaChatClient(cfg.chat_base_url, cfg.chat_model, cfg.timeout_seconds),
         top_k=cfg.top_k,
     )
 
@@ -117,7 +117,7 @@ def index(path: Path, config_path: str | None) -> None:
     """Index the .java files of a repository or folder."""
     cfg = _load_config_or_exit(config_path)
     store = _build_store(cfg)
-    embedder = OllamaEmbeddingClient(cfg.base_url, cfg.embedding_model, cfg.timeout_seconds)
+    embedder = OllamaEmbeddingClient(cfg.embedding_base_url, cfg.embedding_model, cfg.timeout_seconds)
     chunker = JavaChunker(max_chunk_chars=cfg.max_chunk_chars)
 
     click.echo(f"Indexing {path} ...")
@@ -163,8 +163,8 @@ def ask(question: str, save: bool, out_path: Path | None, top_k: int | None,
 
     pipeline = RagPipeline(
         store=store,
-        embedder=OllamaEmbeddingClient(cfg.base_url, cfg.embedding_model, cfg.timeout_seconds),
-        chat=OllamaChatClient(cfg.base_url, cfg.chat_model, cfg.timeout_seconds),
+        embedder=OllamaEmbeddingClient(cfg.embedding_base_url, cfg.embedding_model, cfg.timeout_seconds),
+        chat=OllamaChatClient(cfg.chat_base_url, cfg.chat_model, cfg.timeout_seconds),
         top_k=top_k or cfg.top_k,
     )
     try:

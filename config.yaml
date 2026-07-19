@@ -1,16 +1,25 @@
-# پیکربندی java-doc-assistant
-# تنها مقصد شبکه‌ای ابزار همین base_url است؛ هیچ اتصال دیگری برقرار نمی‌شود.
+# پیکربندی casprag
+# تنها مقصدهای شبکه‌ای ابزار، سرورهایی هستند که همین‌جا مشخص می‌شوند.
 
 server:
-  # آدرس سرور داخلی سازگار با Ollama
-  base_url: "http://localhost:11434"
+  # آدرس پیش‌فرض سرور سازگار با Ollama — اگر chat و embedding روی یک سرور
+  # هستند فقط همین کافی است
+  base_url: "http://192.168.1.10:11434"
+
+  # اختیاری: اگر مدل embedding روی سرور اصلی بالا نیست، آدرس جدا بدهید
+  # (مثلاً Ollama لوکال خودتان). خالی یعنی همان base_url.
+  embedding_base_url: "http://localhost:11434"
+
+  # اختیاری: override جداگانه برای سرور chat. خالی یعنی همان base_url.
+  chat_base_url: ""
+
   # ثانیه؛ برای مدل‌های کند روی سرور داخلی در صورت نیاز بالا ببرید
   timeout_seconds: 300
 
 models:
-  # مدل تولید پاسخ (endpoint: /api/chat)
+  # مدل تولید پاسخ (endpoint: /api/chat روی سرور chat)
   chat: "qwen2.5-coder:32b"
-  # مدل embedding — جدا از مدل تولید (endpoint: /api/embed)
+  # مدل embedding — جدا از مدل تولید (endpoint: /api/embed روی سرور embedding)
   embedding: "nomic-embed-text"
 
 chroma:

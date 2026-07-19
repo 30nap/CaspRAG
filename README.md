@@ -12,7 +12,7 @@ A **read-only** Q&A and documentation assistant for Java codebases (Spring Boot 
 
 - The tool only **reads** the codebase; it has no file write/edit, apply_diff, or shell execution capability.
 - The only write locations are the Chroma index directory (`chroma.path`) and generated Markdown output (`output.docs_dir`).
-- The only network destination is `server.base_url` from the config; Chroma telemetry is disabled as well.
+- The only network destinations are the servers configured in `config.yaml` (`server.base_url`, plus optional `chat_base_url`/`embedding_base_url`); Chroma telemetry is disabled as well.
 
 ## Installation
 
@@ -50,7 +50,11 @@ Edit `config.yaml` (a sample is provided at the repository root):
 
 ```yaml
 server:
-  base_url: "http://your-internal-server:11434"
+  base_url: "http://your-internal-server:11434"   # default server for both models
+  # optional: separate servers per model — e.g. chat on the network server
+  # but embedding on your local Ollama (leave empty to use base_url)
+  embedding_base_url: "http://localhost:11434"
+  chat_base_url: ""
 models:
   chat: "qwen2.5-coder:32b"       # answer-generation model
   embedding: "nomic-embed-text"   # embedding model (separate from the chat model)

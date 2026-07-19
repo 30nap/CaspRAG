@@ -49,9 +49,9 @@ class ReplSession:
         self._cfg = cfg
         self._store = ChromaStore(path=cfg.chroma_path, collection=cfg.chroma_collection)
         self._embedder = OllamaEmbeddingClient(
-            cfg.base_url, cfg.embedding_model, cfg.timeout_seconds
+            cfg.embedding_base_url, cfg.embedding_model, cfg.timeout_seconds
         )
-        self._chat = OllamaChatClient(cfg.base_url, cfg.chat_model, cfg.timeout_seconds)
+        self._chat = OllamaChatClient(cfg.chat_base_url, cfg.chat_model, cfg.timeout_seconds)
         self._pipeline = RagPipeline(
             store=self._store, embedder=self._embedder, chat=self._chat, top_k=cfg.top_k
         )
